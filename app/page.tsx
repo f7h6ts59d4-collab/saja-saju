@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CorrectedSaju } from "@fullstackfamily/manseryeok";
-import { CITIES } from "./lib/cities";
+import { US_CITIES, type UsCity } from "./lib/usCities";
 import { computeSaju } from "./lib/computeSaju";
 
 type Gender = "남" | "여";
@@ -19,7 +19,7 @@ export default function Home() {
   const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
   const [birthTime, setBirthTime] = useState("");
   const [timeUnknown, setTimeUnknown] = useState(false);
-  const [cityId, setCityId] = useState(CITIES[0].id);
+  const [city, setCity] = useState<UsCity | null>(null);
   const [gender, setGender] = useState<Gender>("남");
   const [name, setName] = useState("");
 
@@ -31,7 +31,6 @@ export default function Home() {
     setError(null);
 
     const [year, month, day] = birthDate.split("-").map(Number);
-    const city = CITIES.find((c) => c.id === cityId);
     if (!year || !month || !day || !city) {
       setError("생년월일과 출생지를 입력하세요.");
       return;
@@ -47,7 +46,9 @@ export default function Home() {
         day,
         ...(time ? { hour: time[0], minute: time[1] } : {}),
         calendar,
-        timezone: city.timezone,
+        timezone: city.tz,
+        longitude: city.lng,
+        latitude: city.lat,
       });
       setResult({ saju, gender, name });
     } catch {
@@ -111,14 +112,8 @@ export default function Home() {
         </label>
 
         <label>
-          출생지{" "}
-          <select value={cityId} onChange={(e) => setCityId(e.target.value)}>
-            {CITIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          Where were you born?
+          <CityAutocomplete value={city} onChange={setCity} />
         </label>
 
         <fieldset>
@@ -159,6 +154,70 @@ export default function Home() {
 
       {result && <Myeongsik view={result} />}
     </main>
+  );
+}
+
+// 출생지 도시 자동완성. 데이터(US_CITIES)는 인구순 정렬이라 큰 도시가 위에 노출된다.
+// 동명 도시 구분 위해 항상 "City, ST"로 표기하고, 검색 결과는 상위 8개로 제한한다.
+// 입력이 바뀌면 이전 선택을 무효화해 표시값과 선택값이 어긋나지 않게 한다.
+const MAX_RESULTS = 8;
+
+function CityAutocomplete({
+  value,
+  onChange,
+}: {
+  value: UsCity | null;
+  onChange: (city: UsCity | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const q = query.trim().toLowerCase();
+  const matches = q
+    ? US_CITIES.filter((c) => c.city.toLowerCase().includes(q)).slice(0, MAX_RESULTS)
+    : [];
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        type="text"
+        value={query}
+        placeholder="City where you were born"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (value) onChange(null);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && matches.length > 0 && (
+        <ul
+          style={{
+            listStyle: "none",
+            margin: 0,
+            padding: 0,
+            border: "1px solid #ccc",
+            background: "#fff",
+          }}
+        >
+          {matches.map((c, i) => (
+            <li key={`${c.city}-${c.state}-${i}`}>
+              <button
+                type="button"
+                style={{ display: "block", width: "100%", textAlign: "left" }}
+                onClick={() => {
+                  onChange(c);
+                  setQuery(`${c.city}, ${c.state}`);
+                  setOpen(false);
+                }}
+              >
+                {c.city}, {c.state}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
