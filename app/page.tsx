@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CorrectedSaju } from "@fullstackfamily/manseryeok";
 import { US_CITIES, type UsCity } from "./lib/usCities";
 import { computeSaju } from "./lib/computeSaju";
+import { assembleTaster } from "./lib/assembleTaster";
 
 type Gender = "남" | "여";
 
@@ -153,6 +154,7 @@ export default function Home() {
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       {result && <Myeongsik view={result} />}
+      {result && <TasterView saju={result.saju} />}
     </main>
   );
 }
@@ -259,6 +261,32 @@ function Myeongsik({ view }: { view: ResultView }) {
           })}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+// 맛보기 3단(일간→결핍→갈증). 조립은 assembleTaster(순수 함수)에 위임하고 여기선
+// bodyEn만 노출한다. 스타일은 최소(검은 배경·흰 글씨) — 연출·일러스트는 이후 UI 대공사.
+function TasterView({ saju }: { saju: CorrectedSaju }) {
+  const taster = assembleTaster(saju);
+  const pieces = [taster.dayMaster, taster.deficiency, taster.teaser];
+
+  return (
+    <section
+      style={{
+        marginTop: 24,
+        background: "#000",
+        color: "#fff",
+        padding: 20,
+        whiteSpace: "pre-line",
+        lineHeight: 1.7,
+      }}
+    >
+      {pieces.map((p, i) => (
+        <p key={i} style={{ margin: i === 0 ? 0 : "20px 0 0" }}>
+          {p.bodyEn}
+        </p>
+      ))}
     </section>
   );
 }
